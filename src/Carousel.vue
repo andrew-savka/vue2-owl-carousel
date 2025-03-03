@@ -1,14 +1,16 @@
 <template>
   <div>
-    <span v-show="showPrev" :id="prevHandler">
-      <slot name="prev" />
-    </span>
     <div :id="elementHandle" :class="['owl-carousel', 'owl-theme']">
       <slot />
     </div>
-    <span v-show="showNext" :id="nextHandler">
-      <slot name="next" />
-    </span>
+    <div class="nav-container">
+      <div v-show="showPrev" :id="prevHandler" class="prev">
+        <slot name="prev" />
+      </div>
+      <div v-show="showNext" :id="nextHandler" class="next">
+        <slot name="next" />
+      </div>
+    </div>
   </div>
 </template>
 <script>
@@ -166,8 +168,8 @@ export default {
       default: 200,
     },
     responsiveBaseElement: {
-        type: String,
-        "default": "window"
+      'type': String,
+      'default': 'window',
     },
     video: {
       type: Boolean,
@@ -217,20 +219,23 @@ export default {
       type: Boolean,
       default: true,
     },
+    stopOnNav: {
+      type: Boolean,
+      default: false,
+    },
   },
   data: function() {
     return {
       showPrev: false,
       showNext: true,
-
+      owl: null,
       prevHandler: 'carousel_prev_' + this.generateUniqueId(),
       elementHandle: 'carousel_' + this.generateUniqueId(),
       nextHandler: 'carousel_next_' + this.generateUniqueId(),
     };
   },
-
   mounted: function() {
-    const owl = $('#' + this.elementHandle).owlCarousel({
+    this.owl = $('#' + this.elementHandle).owlCarousel({
       items: this.items,
       margin: this.margin,
       loop: this.loop,
@@ -282,22 +287,32 @@ export default {
       checkVisible: this.checkVisible,
     });
 
-    $('#' + this.prevHandler).click(function() {
-      owl.trigger('prev.owl.carousel');
+    $('#' + this.prevHandler).click(() => {
+      this.owl.trigger('prev.owl.carousel');
+      if (this.stopOnNav) {
+        this.stop();
+      }
     });
 
-    $('#' + this.nextHandler).click(function() {
-      owl.trigger('next.owl.carousel');
+    $('#' + this.nextHandler).click(() => {
+      this.owl.trigger('next.owl.carousel');
+      if (this.stopOnNav) {
+        this.stop();
+      }
     });
 
     events.forEach((eventName) => {
-      owl.on(`${eventName}.owl.carousel`, (event) => {
+      this.owl.on(`${eventName}.owl.carousel`, (event) => {
         this.$emit(eventName, event);
+
+        if (this.stopOnNav && eventName === 'dragged' ) {
+          this.stop();
+        }
       });
     });
 
     if (!this.loop) {
-      owl.on('changed.owl.carousel', (event) => {
+      this.owl.on('changed.owl.carousel', (event) => {
         // start
         if (event.item.index === 0) {
           this.showPrev = false;
@@ -314,12 +329,20 @@ export default {
           }
         }
       });
+    } else {
+      this.owl.on('changed.owl.carousel', () => {
+        this.showPrev = true;
+        this.showNext = true;
+      });
     }
   },
 
   methods: {
     generateUniqueId() {
       return Math.random().toString(36).substring(2, 15);
+    },
+    stop() {
+      this.owl.trigger('stop.owl.autoplay');
     },
   },
 };
